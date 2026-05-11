@@ -10,10 +10,23 @@ const METRIC_LABELS = {
   housing_avg_cost:                   'Avg absorbed unit cost ($)',
   renter_stir_gap:                    'STIR gap — renter (%)',
   owner_stir_gap:                     'STIR gap — owner (%)',
+  imm_owner_stir:                     'STIR — immigrant owners (%)',
+  nonimm_owner_stir:                  'STIR — non-immigrant owners (%)',
   oax_renter_residual_gap:            'Oaxaca residual gap — renter (%)',
   oax_owner_residual_gap:             'Oaxaca residual gap — owner (%)',
   oax_renter_residual_dollar_per_month: 'Oaxaca residual — renter ($/mo)',
   oax_owner_residual_dollar_per_month:  'Oaxaca residual — owner ($/mo)',
+  oax_renter_residual_dollar_per_year:  'Oaxaca residual — renter ($/yr)',
+  oax_owner_residual_dollar_per_year:   'Oaxaca residual — owner ($/yr)',
+  imm_renter_income:    'Avg income — immigrant renters ($)',
+  nonimm_renter_income: 'Avg income — non-immigrant renters ($)',
+  imm_owner_income:     'Avg income — immigrant owners ($)',
+  nonimm_owner_income:  'Avg income — non-immigrant owners ($)',
+  imm_total_income:     'Avg income — immigrants ($)',
+  nonimm_total_income:  'Avg income — non-immigrants ($)',
+  imm_total_pop:        'Immigrant count — total',
+  imm_renter_pop:       'Immigrant count — renter',
+  imm_owner_pop:        'Immigrant count — owner',
 };
 
 // Metrics stored as standalone properties (not prefixed by group)
@@ -21,17 +34,35 @@ const STANDALONE_METRICS = new Set([
   'housing_avg_cost',
   'renter_stir_gap',
   'owner_stir_gap',
+  'imm_owner_stir',
+  'nonimm_owner_stir',
   'oax_renter_residual_gap',
   'oax_owner_residual_gap',
   'oax_renter_residual_dollar_per_month',
   'oax_owner_residual_dollar_per_month',
+  'oax_renter_residual_dollar_per_year',
+  'oax_owner_residual_dollar_per_year',
+  'imm_renter_income', 'nonimm_renter_income',
+  'imm_owner_income',  'nonimm_owner_income',
+  'imm_total_income',  'nonimm_total_income',
+  'imm_total_pop',     'imm_renter_pop', 'imm_owner_pop',
 ]);
 
-// Standalone metrics formatted as currency
+// Standalone metrics formatted as dollar amounts
 const CURRENCY_METRICS = new Set([
   'housing_avg_cost',
   'oax_renter_residual_dollar_per_month',
   'oax_owner_residual_dollar_per_month',
+  'oax_renter_residual_dollar_per_year',
+  'oax_owner_residual_dollar_per_year',
+  'imm_renter_income', 'nonimm_renter_income',
+  'imm_owner_income',  'nonimm_owner_income',
+  'imm_total_income',  'nonimm_total_income',
+]);
+
+// Standalone metrics formatted as plain integers (counts)
+const COUNT_METRICS = new Set([
+  'imm_total_pop', 'imm_renter_pop', 'imm_owner_pop',
 ]);
 
 const COLORS = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026'];
@@ -62,8 +93,9 @@ function colorStops(min, max) {
 
 function fmt(v, metric) {
   if (v == null || isNaN(v) || v === '') return '—';
+  if (metric && COUNT_METRICS.has(metric))    return Math.round(Number(v)).toLocaleString();
   if (metric && CURRENCY_METRICS.has(metric)) {
-    const suffix = metric === 'housing_avg_cost' ? '' : '/mo';
+    const suffix = metric === 'housing_avg_cost' ? '' : metric.endsWith('_per_year') ? '/yr' : '/mo';
     return '$' + Math.round(Number(v)).toLocaleString() + suffix;
   }
   return `${parseFloat(v).toFixed(1)}%`;
@@ -202,6 +234,17 @@ function buildSidebar(props) {
   html += `<div class="stat-section-title">Absorbed housing units (2025)</div>`;
   html += `<div class="stat-row"><span>Avg unit cost</span><span>${fmt(props.housing_avg_cost, 'housing_avg_cost')}</span></div>`;
 
+  html += `<div class="stat-section-title">Average income</div>`;
+  html += `<div class="stat-row"><span>Immigrant renters</span><span>${fmt(props.imm_renter_income, 'imm_renter_income')}</span></div>`;
+  html += `<div class="stat-row"><span>Non-immigrant renters</span><span>${fmt(props.nonimm_renter_income, 'nonimm_renter_income')}</span></div>`;
+  html += `<div class="stat-row"><span>Immigrant owners</span><span>${fmt(props.imm_owner_income, 'imm_owner_income')}</span></div>`;
+  html += `<div class="stat-row"><span>Non-immigrant owners</span><span>${fmt(props.nonimm_owner_income, 'nonimm_owner_income')}</span></div>`;
+
+  html += `<div class="stat-section-title">Immigrant population</div>`;
+  html += `<div class="stat-row"><span>Total</span><span>${fmt(props.imm_total_pop, 'imm_total_pop')}</span></div>`;
+  html += `<div class="stat-row"><span>Renters</span><span>${fmt(props.imm_renter_pop, 'imm_renter_pop')}</span></div>`;
+  html += `<div class="stat-row"><span>Owners</span><span>${fmt(props.imm_owner_pop, 'imm_owner_pop')}</span></div>`;
+
   html += `<div class="stat-section-title">STIR gap (immigrant vs non-immigrant)</div>`;
   html += `<div class="stat-row"><span>Renter gap</span><span>${fmt(props.renter_stir_gap, 'renter_stir_gap')}</span></div>`;
   html += `<div class="stat-row"><span>Owner gap</span><span>${fmt(props.owner_stir_gap, 'owner_stir_gap')}</span></div>`;
@@ -211,6 +254,8 @@ function buildSidebar(props) {
   html += `<div class="stat-row"><span>Owner gap (%)</span><span>${fmt(props.oax_owner_residual_gap, 'oax_owner_residual_gap')}</span></div>`;
   html += `<div class="stat-row"><span>Renter ($/mo)</span><span>${fmt(props.oax_renter_residual_dollar_per_month, 'oax_renter_residual_dollar_per_month')}</span></div>`;
   html += `<div class="stat-row"><span>Owner ($/mo)</span><span>${fmt(props.oax_owner_residual_dollar_per_month, 'oax_owner_residual_dollar_per_month')}</span></div>`;
+  html += `<div class="stat-row"><span>Renter ($/yr)</span><span>${fmt(props.oax_renter_residual_dollar_per_year, 'oax_renter_residual_dollar_per_year')}</span></div>`;
+  html += `<div class="stat-row"><span>Owner ($/yr)</span><span>${fmt(props.oax_owner_residual_dollar_per_year, 'oax_owner_residual_dollar_per_year')}</span></div>`;
   html += `<div class="stat-row"><span>Renter typology</span><span>${props.oax_renter_typology || '—'}</span></div>`;
   html += `<div class="stat-row"><span>Owner typology</span><span>${props.oax_owner_typology || '—'}</span></div>`;
 

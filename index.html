@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSD Housing Explorer — 3D</title>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { display: flex; height: 100vh; font-family: system-ui, sans-serif; }
+
+    #map { flex: 1; }
+
+    #sidebar {
+      width: 320px;
+      background: #f8f9fa;
+      border-left: 1px solid #dee2e6;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid #dee2e6;
+      flex-shrink: 0;
+    }
+
+    #sidebar-header h2 { font-size: 1.1rem; margin-bottom: 8px; }
+
+    #controls { display: flex; flex-direction: column; gap: 8px; }
+
+    #controls label { font-size: 0.78rem; color: #555; margin-bottom: 2px; display: block; }
+
+    #controls select {
+      width: 100%;
+      padding: 5px 8px;
+      font-size: 0.82rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+
+    #sidebar-body {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #zone-info { color: #aaa; font-size: 0.85rem; text-align: center; margin-top: 40px; }
+
+    .zone-name { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+    .zone-meta { font-size: 0.78rem; color: #666; margin-bottom: 16px; }
+
+    .stat-section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      margin: 14px 0 4px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #e9ecef;
+      font-size: 0.82rem;
+    }
+
+    .stat-row span:last-child { font-weight: 600; }
+
+    #legend {
+      position: absolute;
+      bottom: 32px;
+      left: 12px;
+      background: rgba(255,255,255,0.92);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      pointer-events: none;
+      min-width: 180px;
+    }
+
+    .legend-section { margin-bottom: 10px; }
+    .legend-section:last-child { margin-bottom: 0; }
+
+    .legend-section-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+      font-size: 0.76rem;
+      color: #333;
+    }
+
+    #legend-bar {
+      width: 160px;
+      height: 10px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #ffffcc, #fd8d3c, #800026);
+      margin-bottom: 4px;
+    }
+
+    #legend-labels { display: flex; justify-content: space-between; color: #555; }
+
+    .height-legend-bar {
+      width: 160px;
+      height: 14px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #e8eaf6, #3949ab);
+      margin-bottom: 4px;
+      clip-path: polygon(0 100%, 100% 0, 100% 100%);
+    }
+
+    #height-legend-labels { display: flex; justify-content: space-between; color: #555; }
+
+    #nav-hint {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255,255,255,0.88);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: #555;
+      pointer-events: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    #search-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    #csd-search {
+      width: 100%;
+      padding: 6px 28px 6px 8px;
+      font-size: 0.82rem;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      background: white;
+    }
+
+    #csd-search:focus { outline: none; border-color: #6c757d; }
+
+    #search-clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #aaa;
+      font-size: 0.9rem;
+      line-height: 1;
+      display: none;
+      padding: 0;
+    }
+
+    #search-clear:hover { color: #333; }
+
+    #search-msg {
+      font-size: 0.74rem;
+      color: #e03131;
+      margin-top: 3px;
+      min-height: 1em;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>CSD Housing Explorer</h2>
+    <div id="search-wrap">
+      <input id="csd-search" type="text" placeholder="Search CSD name… (Enter)" autocomplete="off" />
+      <button id="search-clear" title="Clear">✕</button>
+      <div id="search-msg"></div>
+    </div>
+    <div id="controls">
+      <div>
+        <label>Population group</label>
+        <select id="group-select">
+          <option value="total">Total</option>
+          <option value="immigrant">Immigrant</option>
+          <option value="nonimmigrant">Non-immigrant</option>
+        </select>
+      </div>
+      <div>
+        <label>Zone colour metric</label>
+        <select id="color-metric-select">
+          <option value="gap">Renter–owner gap (%)</option>
+          <option value="total">Shelter cost — all tenures (%)</option>
+          <option value="renter">Shelter cost — renter (%)</option>
+          <option value="owner">Shelter cost — owner (%)</option>
+          <option value="housing_avg_cost">Avg absorbed unit cost ($)</option>
+        </select>
+      </div>
+      <div>
+        <label>Zone height metric</label>
+        <select id="height-metric-select">
+          <option value="renter">Shelter cost — renter (%)</option>
+          <option value="gap">Renter–owner gap (%)</option>
+          <option value="total">Shelter cost — all tenures (%)</option>
+          <option value="owner">Shelter cost — owner (%)</option>
+          <option value="housing_avg_cost">Avg absorbed unit cost ($)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="sidebar-body">
+    <div id="zone-info">Click a zone to view stats.</div>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="legend-section">
+    <div class="legend-section-title" id="legend-color-title">Colour: Renter–owner gap (%)</div>
+    <div id="legend-bar"></div>
+    <div id="legend-labels">
+      <span id="legend-min">—</span>
+      <span id="legend-max">—</span>
+    </div>
+  </div>
+  <div class="legend-section">
+    <div class="legend-section-title" id="legend-height-title">Height: Shelter cost — renter (%)</div>
+    <div class="height-legend-bar"></div>
+    <div id="height-legend-labels">
+      <span id="height-legend-min">—</span>
+      <span id="height-legend-max">—</span>
+    </div>
+  </div>
+</div>
+
+<div id="nav-hint">Right-click drag to tilt · Scroll to zoom</div>
+
+<script src="map.js"></script>
+</body>
+</html>

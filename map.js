@@ -3,15 +3,36 @@ const DATA_URL = 'data.geojson';
 const MAX_HEIGHT = 60000; // metres — visible at zoom ~8 with pitch
 
 const METRIC_LABELS = {
-  gap:                   'Renter–owner gap (%)',
-  total:                 'Shelter cost — all tenures (%)',
-  renter:                'Shelter cost — renter (%)',
-  owner:                 'Shelter cost — owner (%)',
-  housing_avg_cost: 'Avg absorbed unit cost ($)',
+  gap:                                'Renter–owner gap (%)',
+  total:                              'Shelter cost — all tenures (%)',
+  renter:                             'Shelter cost — renter (%)',
+  owner:                              'Shelter cost — owner (%)',
+  housing_avg_cost:                   'Avg absorbed unit cost ($)',
+  renter_stir_gap:                    'STIR gap — renter (%)',
+  owner_stir_gap:                     'STIR gap — owner (%)',
+  oax_renter_residual_gap:            'Oaxaca residual gap — renter (%)',
+  oax_owner_residual_gap:             'Oaxaca residual gap — owner (%)',
+  oax_renter_residual_dollar_per_month: 'Oaxaca residual — renter ($/mo)',
+  oax_owner_residual_dollar_per_month:  'Oaxaca residual — owner ($/mo)',
 };
 
 // Metrics stored as standalone properties (not prefixed by group)
-const STANDALONE_METRICS = new Set(['housing_avg_cost']);
+const STANDALONE_METRICS = new Set([
+  'housing_avg_cost',
+  'renter_stir_gap',
+  'owner_stir_gap',
+  'oax_renter_residual_gap',
+  'oax_owner_residual_gap',
+  'oax_renter_residual_dollar_per_month',
+  'oax_owner_residual_dollar_per_month',
+]);
+
+// Standalone metrics formatted as currency
+const CURRENCY_METRICS = new Set([
+  'housing_avg_cost',
+  'oax_renter_residual_dollar_per_month',
+  'oax_owner_residual_dollar_per_month',
+]);
 
 const COLORS = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026'];
 
@@ -41,7 +62,10 @@ function colorStops(min, max) {
 
 function fmt(v, metric) {
   if (v == null || isNaN(v) || v === '') return '—';
-  if (metric && STANDALONE_METRICS.has(metric)) return '$' + Math.round(Number(v)).toLocaleString();
+  if (metric && CURRENCY_METRICS.has(metric)) {
+    const suffix = metric === 'housing_avg_cost' ? '' : '/mo';
+    return '$' + Math.round(Number(v)).toLocaleString() + suffix;
+  }
   return `${parseFloat(v).toFixed(1)}%`;
 }
 
@@ -177,6 +201,18 @@ function buildSidebar(props) {
 
   html += `<div class="stat-section-title">Absorbed housing units (2025)</div>`;
   html += `<div class="stat-row"><span>Avg unit cost</span><span>${fmt(props.housing_avg_cost, 'housing_avg_cost')}</span></div>`;
+
+  html += `<div class="stat-section-title">STIR gap (immigrant vs non-immigrant)</div>`;
+  html += `<div class="stat-row"><span>Renter gap</span><span>${fmt(props.renter_stir_gap, 'renter_stir_gap')}</span></div>`;
+  html += `<div class="stat-row"><span>Owner gap</span><span>${fmt(props.owner_stir_gap, 'owner_stir_gap')}</span></div>`;
+
+  html += `<div class="stat-section-title">Oaxaca decomposition residual</div>`;
+  html += `<div class="stat-row"><span>Renter gap (%)</span><span>${fmt(props.oax_renter_residual_gap, 'oax_renter_residual_gap')}</span></div>`;
+  html += `<div class="stat-row"><span>Owner gap (%)</span><span>${fmt(props.oax_owner_residual_gap, 'oax_owner_residual_gap')}</span></div>`;
+  html += `<div class="stat-row"><span>Renter ($/mo)</span><span>${fmt(props.oax_renter_residual_dollar_per_month, 'oax_renter_residual_dollar_per_month')}</span></div>`;
+  html += `<div class="stat-row"><span>Owner ($/mo)</span><span>${fmt(props.oax_owner_residual_dollar_per_month, 'oax_owner_residual_dollar_per_month')}</span></div>`;
+  html += `<div class="stat-row"><span>Renter typology</span><span>${props.oax_renter_typology || '—'}</span></div>`;
+  html += `<div class="stat-row"><span>Owner typology</span><span>${props.oax_owner_typology || '—'}</span></div>`;
 
   return html;
 }
